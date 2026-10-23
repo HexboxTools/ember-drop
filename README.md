@@ -2,7 +2,7 @@
 
 Sell a file for BCH. The buyer gets an NFT receipt that unlocks it. No server, no accounts.
 
-Built for BCH BLAZE 2026 (Nov 14–22). Hackathon code lands here from Nov 14; until then this repo only holds the plan.
+Built for BCH BLAZE 2026 (Nov 14–22). The sealing library (`src/seal.js`) was written before the event as a pre-existing component; the BCH payment, contract and WizardConnect parts are built during the hackathon.
 
 ## How it works
 
@@ -17,11 +17,19 @@ The seller can be offline the whole time.
 
 ## Run it
 
-Static site. Once code exists: `npx serve .`
+Static site: `npx serve .` then open http://localhost:3000 to seal a file.
+
+Tests: `npm test` (Node 20+).
+
+## Seal format
+
+- AES-256-GCM, key = HKDF-SHA256(publicShare ‖ receiptShare, salt, "ember-drop/v1").
+- Manifest (public): version, metadata (bound as AAD), publicShare, salt, iv, sha256 of ciphertext.
+- Receipt NFT commitment (25 bytes): `01` ‖ receiptShare(16) ‖ first 8 bytes of ciphertext hash.
 
 ## Plan
 
-- [ ] Client-side AES-GCM encrypt/decrypt
+- [x] Client-side AES-GCM encrypt/decrypt (split key, commitment encoding)
 - [ ] WizardConnect wallet connection
 - [ ] CashScript contract: pay → mint receipt NFT
 - [ ] Unlock from NFT commitment

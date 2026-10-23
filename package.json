@@ -1,0 +1,2 @@
+{ "name": "ember-drop", "version": "0.1.0", "type": "module", "license": "MIT",
+  "scripts": { "test": "node --test test/" } }

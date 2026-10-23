@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>Ember Drop — seal a file</title>
+<h1>Ember Drop</h1><p>Seal a file in your browser. Nothing is uploaded.</p>
+<input type="file" id="f"> <button id="go">Seal</button><pre id="out"></pre>
+<script type="module">
+import { seal, encodeCommitment } from './src/seal.js';
+go.onclick = async () => {
+  const file = f.files[0]; if (!file) return;
+  const s = await seal(new Uint8Array(await file.arrayBuffer()), { name: file.name, size: file.size });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([s.ciphertext])); a.download = file.name + '.ember'; a.textContent = 'Download sealed file';
+  out.textContent = 'Manifest:\n' + JSON.stringify(s.manifest, null, 2) + '\n\nReceipt NFT commitment (keep secret until sale):\n' + encodeCommitment(s.receiptShare, s.manifest.sha256) + '\n\n';
+  out.append(a);
+};
+</script>
