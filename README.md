@@ -17,7 +17,7 @@ The seller can be offline the whole time.
 
 ## Run it
 
-Static site: `npx serve .` then open http://localhost:3000 to seal a file.
+Static site: `npx serve .` then open http://localhost:3000. Seal a file on the first page, then open the Unlock page and paste the receipt commitment to get it back.
 
 Tests: `npm test` (Node 20+).
 
@@ -25,11 +25,14 @@ Tests: `npm test` (Node 20+).
 
 - AES-256-GCM, key = HKDF-SHA256(publicShare ‖ receiptShare, salt, "ember-drop/v1").
 - Manifest (public): version, metadata (bound as AAD), publicShare, salt, iv, sha256 of ciphertext.
+- Bundle (`src/bundle.js`): `EMBR` | version | manifest length | manifest JSON | ciphertext, so a seller hosts a single `.ember` file.
 - Receipt NFT commitment (25 bytes): `01` ‖ receiptShare(16) ‖ first 8 bytes of ciphertext hash.
 
 ## Plan
 
 - [x] Client-side AES-GCM encrypt/decrypt (split key, commitment encoding)
+- [x] Single-file `.ember` bundle, seal and unlock pages (manual commitment paste)
+- [x] Check that a receipt matches the file it unlocks
 - [ ] WizardConnect wallet connection
 - [ ] CashScript contract: pay → mint receipt NFT
 - [ ] Unlock from NFT commitment
@@ -38,7 +41,11 @@ Tests: `npm test` (Node 20+).
 
 ## Threat model / limits
 
-To be written. The short version: whoever holds the receipt can decrypt, and a buyer can always leak the plaintext once they have it.
+- Whoever holds the receipt share can decrypt, and a buyer can always leak the plaintext once they have it. This is a license, not DRM.
+- The public share and ciphertext are public. Without the receipt share the key has 128 unknown bits.
+- The manifest metadata (name, size, price) is bound to the ciphertext as AAD, so editing it breaks decryption.
+- Until a receipt is minted on-chain, the commitment is only as private as the seller keeps it.
+- Sellers should not reuse a sealed file across different prices; each seal makes fresh shares.
 
 ## License
 

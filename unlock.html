@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ember Drop: unlock a file</title><link rel="stylesheet" href="style.css">
+<nav><a href="index.html">Seal</a><a href="unlock.html"><b>Unlock</b></a></nav>
+<h1>Unlock</h1>
+<p>Pick a sealed <code>.ember</code> file and paste the receipt commitment. Decryption happens locally.</p>
+<p><input type="file" id="f"></p>
+<p><input type="text" id="c" placeholder="receipt commitment (50 hex characters)" autocomplete="off" spellcheck="false"></p>
+<p><button id="go">Unlock</button></p>
+<p id="msg" role="status"></p>
+<p class="note">Later this field fills itself from the NFT receipt in your wallet.</p>
+<script type="module">
+import { openWithCommitment } from './src/seal.js';
+import { unpackBundle } from './src/bundle.js';
+const $ = (id) => document.getElementById(id);
+$('go').onclick = async () => {
+  const file = $('f').files[0]; if (!file) { $('msg').textContent = 'Choose a .ember file first.'; return; }
+  try {
+    const { manifest, ciphertext } = unpackBundle(new Uint8Array(await file.arrayBuffer()));
+    const plain = await openWithCommitment(manifest, ciphertext, $('c').value);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([plain])); a.download = manifest.meta?.name || 'unlocked';
+    a.textContent = 'Download ' + a.download;
+    $('msg').replaceChildren('Unlocked. ', a);
+  } catch (e) { $('msg').textContent = 'Could not unlock: ' + e.message; }
+};
+</script>

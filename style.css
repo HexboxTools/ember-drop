@@ -1,0 +1,7 @@
+:root{color-scheme:dark light}
+body{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem}
+nav a{margin-right:1rem}
+pre{white-space:pre-wrap;word-break:break-all;background:#8882;padding:.75rem;border-radius:6px}
+input[type=text],textarea{width:100%;box-sizing:border-box;font-family:monospace}
+button{padding:.4rem 1rem}
+.note{opacity:.75;font-size:.9rem}

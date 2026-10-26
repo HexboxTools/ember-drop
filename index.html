@@ -1,14 +1,28 @@
-<!doctype html><meta charset="utf-8"><title>Ember Drop — seal a file</title>
-<h1>Ember Drop</h1><p>Seal a file in your browser. Nothing is uploaded.</p>
-<input type="file" id="f"> <button id="go">Seal</button><pre id="out"></pre>
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ember Drop: seal a file</title><link rel="stylesheet" href="style.css">
+<nav><a href="index.html"><b>Seal</b></a><a href="unlock.html">Unlock</a></nav>
+<h1>Ember Drop</h1>
+<p>Seal a file in your browser. Nothing is uploaded. You get one <code>.ember</code> file to host anywhere, plus a receipt commitment that unlocks it.</p>
+<p><input type="file" id="f"> <button id="go">Seal</button></p>
+<div id="res" hidden>
+  <p><a id="dl" download>Download sealed file</a></p>
+  <p>Receipt commitment (keep secret until sale; it goes in the receipt NFT):</p>
+  <pre id="commit"></pre>
+  <details><summary>Manifest</summary><pre id="man"></pre></details>
+</div>
+<p class="note">Demo build: the wallet payment and NFT receipt are not wired in yet. Paste the commitment on the Unlock page to test the full round trip.</p>
 <script type="module">
 import { seal, encodeCommitment } from './src/seal.js';
-go.onclick = async () => {
-  const file = f.files[0]; if (!file) return;
+import { packBundle } from './src/bundle.js';
+const $ = (id) => document.getElementById(id);
+$('go').onclick = async () => {
+  const file = $('f').files[0]; if (!file) return;
   const s = await seal(new Uint8Array(await file.arrayBuffer()), { name: file.name, size: file.size });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([s.ciphertext])); a.download = file.name + '.ember'; a.textContent = 'Download sealed file';
-  out.textContent = 'Manifest:\n' + JSON.stringify(s.manifest, null, 2) + '\n\nReceipt NFT commitment (keep secret until sale):\n' + encodeCommitment(s.receiptShare, s.manifest.sha256) + '\n\n';
-  out.append(a);
+  const bundle = packBundle(s.manifest, s.ciphertext);
+  $('dl').href = URL.createObjectURL(new Blob([bundle], { type: 'application/octet-stream' }));
+  $('dl').download = file.name + '.ember';
+  $('commit').textContent = encodeCommitment(s.receiptShare, s.manifest.sha256);
+  $('man').textContent = JSON.stringify(s.manifest, null, 2);
+  $('res').hidden = false;
 };
 </script>

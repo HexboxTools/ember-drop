@@ -51,3 +51,10 @@ export function decodeCommitment(hex) {
   if (hex.length !== 50 || !hex.startsWith('01')) throw new Error('not an ember-drop v1 commitment');
   return { receiptShare: hex.slice(2, 34), manifestTag: hex.slice(34) };
 }
+
+/** Open using the full receipt commitment (hex). Checks that the receipt was minted for this exact file. */
+export async function openWithCommitment(manifest, ciphertext, commitmentHex) {
+  const { receiptShare, manifestTag } = decodeCommitment(commitmentHex.trim().toLowerCase());
+  if (manifestTag !== manifest.sha256.slice(0, 16)) throw new Error('this receipt belongs to a different file');
+  return open(manifest, ciphertext, receiptShare);
+}
