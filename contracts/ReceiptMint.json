@@ -1,0 +1,49 @@
+{
+  "contractName": "ReceiptMint",
+  "constructorInputs": [
+    { "name": "priceSats", "type": "int" },
+    { "name": "pkhSeller", "type": "bytes20" }
+  ],
+  "abi": [
+    {
+      "name": "mint",
+      "inputs": [
+        { "name": "emberCommitment", "type": "bytes" }
+      ]
+    }
+  ],
+  "bytecode": "OP_2 OP_PICK OP_SIZE OP_NIP 19 OP_NUMEQUALVERIFY OP_2 OP_PICK OP_1 OP_SPLIT OP_DROP OP_1 OP_EQUALVERIFY OP_INPUTINDEX OP_0 OP_NUMEQUALVERIFY OP_TXOUTPUTCOUNT OP_3 OP_NUMEQUAL OP_TXOUTPUTCOUNT OP_4 OP_NUMEQUAL OP_BOOLOR OP_VERIFY OP_0 OP_UTXOTOKENCOMMITMENT OP_BIN2NUM OP_1ADD OP_0 OP_OUTPUTBYTECODE OP_0 OP_UTXOBYTECODE OP_EQUALVERIFY OP_0 OP_OUTPUTTOKENCATEGORY OP_0 OP_UTXOTOKENCATEGORY OP_EQUALVERIFY OP_0 OP_OUTPUTTOKENCOMMITMENT OP_EQUALVERIFY OP_0 OP_OUTPUTVALUE OP_0 OP_UTXOVALUE OP_NUMEQUALVERIFY OP_0 OP_UTXOTOKENCATEGORY 20 OP_SPLIT OP_DROP OP_1 OP_OUTPUTVALUE e803 OP_NUMEQUALVERIFY OP_1 OP_OUTPUTTOKENCATEGORY OP_EQUALVERIFY OP_1 OP_OUTPUTTOKENCOMMITMENT OP_3 OP_ROLL OP_EQUALVERIFY OP_2 OP_OUTPUTTOKENCATEGORY OP_0 OP_EQUALVERIFY OP_2 OP_OUTPUTVALUE OP_NUMEQUALVERIFY OP_2 OP_OUTPUTBYTECODE 76a914 OP_ROT OP_CAT 88ac OP_CAT OP_EQUALVERIFY OP_TXOUTPUTCOUNT OP_4 OP_NUMEQUAL OP_IF OP_3 OP_OUTPUTTOKENCATEGORY OP_0 OP_EQUALVERIFY OP_ENDIF OP_1",
+  "source": "pragma cashscript ^0.14.0;\n\n/**\n * Ember Drop receipt mint (BLAZE demo, local prep).\n * Holds a minting NFT. Buyer pays `priceSats`; covenant mints one immutable NFT whose\n * commitment is the buyer-supplied Ember Drop key share (25 bytes: 01||share16||tag8).\n * Seller payout goes to pkhSeller (P2PKH).\n */\ncontract ReceiptMint(\n    int priceSats,\n    bytes20 pkhSeller\n) {\n    function mint(bytes emberCommitment) {\n        // Ember Drop v1 commitment: 1 + 16 + 8 = 25 bytes, version byte 0x01\n        require(emberCommitment.length == 25);\n        require(emberCommitment.split(1)[0] == 0x01);\n\n        require(this.activeInputIndex == 0);\n        require(tx.outputs.length == 3 || tx.outputs.length == 4);\n\n        bytes commitment = tx.inputs[0].nftCommitment;\n        int next = int(commitment) + 1;\n\n        // Out0: preserve minting covenant + minting NFT (value unchanged; payment goes to seller in Out2)\n        require(tx.outputs[0].lockingBytecode == tx.inputs[0].lockingBytecode);\n        require(tx.outputs[0].tokenCategory == tx.inputs[0].tokenCategory);\n        require(tx.outputs[0].nftCommitment == bytes(next));\n        require(tx.outputs[0].value == tx.inputs[0].value);\n\n        // Out1: immutable receipt NFT (buyer sets locking bytecode / address)\n        bytes tokenId = tx.inputs[0].tokenCategory.split(32)[0];\n        require(tx.outputs[1].value == 1000);\n        require(tx.outputs[1].tokenCategory == tokenId);\n        require(tx.outputs[1].nftCommitment == emberCommitment);\n\n        // Out2: seller payout (P2PKH to pkhSeller)\n        require(tx.outputs[2].tokenCategory == 0x);\n        require(tx.outputs[2].value == priceSats);\n        require(tx.outputs[2].lockingBytecode == new LockingBytecodeP2PKH(pkhSeller));\n\n        // Optional Out3: buyer change (pure BCH)\n        if (tx.outputs.length == 4) {\n            require(tx.outputs[3].tokenCategory == 0x);\n        }\n    }\n}\n",
+  "fingerprint": "ef3626bf3ae2ae76835404351136d5164ebf7e136898947eb8431aa82ed676bb",
+  "debug": {
+    "bytecode": "5279827701199d5279517f755188c0009dc4539cc4549c9b6900cf818b00cd00c78800d100ce8800d28800cc00c69d00ce01207f7551cc02e8039d51d18851d2537a8852d1008852cc9d52cd0376a9147b7e0288ac7e88c4549c6353d100886851",
+    "sourceMap": "15:16:15:31;;:::38:1;;:42::44:0;:8::46:1;16:16:16:31:0;;:38::39;:16::40:1;:::43;:47::51:0;:8::53:1;18:16:18:37:0;:41::42;:8::44:1;19:16:19:33:0;:37::38;:16:::1;:42::59:0;:63::64;:42:::1;:16;:8::66;21:37:21:38:0;:27::53:1;22:19:22:34;:::38;25:27:25:28:0;:16::45:1;:59::60:0;:49::77:1;:8::79;26:27:26:28:0;:16::43:1;:57::58:0;:47::73:1;:8::75;27:27:27:28:0;:16::43:1;:8::60;28:27:28:28:0;:16::35:1;:49::50:0;:39::57:1;:8::59;31:34:31:35:0;:24::50:1;:57::59:0;:24::60:1;:::63;32:27:32:28:0;:16::35:1;:39::43:0;:8::45:1;33:27:33:28:0;:16::43:1;:8::56;34:27:34:28:0;:16::43:1;:47::62:0;;:8::64:1;37:27:37:28:0;:16::43:1;:47::49:0;:8::51:1;38:27:38:28:0;:16::35:1;:8::50;39:27:39:28:0;:16::45:1;:49::84:0;:74::83;:49::84:1;;;:8::86;42:12:42:29:0;:33::34;:12:::1;:36:44:9:0;43:31:43:32;:20::47:1;:51::53:0;:12::55:1;42:36:44:9;13:41:45:5",
+    "logs": [],
+    "requires": [
+      { "ip": 7, "line": 15 },
+      { "ip": 14, "line": 16 },
+      { "ip": 17, "line": 18 },
+      { "ip": 25, "line": 19 },
+      { "ip": 34, "line": 25 },
+      { "ip": 39, "line": 26 },
+      { "ip": 42, "line": 27 },
+      { "ip": 47, "line": 28 },
+      { "ip": 56, "line": 32 },
+      { "ip": 59, "line": 33 },
+      { "ip": 64, "line": 34 },
+      { "ip": 68, "line": 37 },
+      { "ip": 71, "line": 38 },
+      { "ip": 79, "line": 39 },
+      { "ip": 87, "line": 43 }
+    ]
+  },
+  "compiler": {
+    "name": "cashc",
+    "version": "0.14.0",
+    "options": {
+      "enforceFunctionParameterTypes": true,
+      "enforceLocktimeGuard": true
+    }
+  },
+  "updatedAt": "2026-11-08T00:59:37.085Z"
+}

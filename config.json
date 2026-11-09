@@ -1,0 +1,11 @@
+{
+  "network": "chipnet",
+  "prefix": "bchtest",
+  "priceSats": 10000,
+  "sellerPkhHex": "87f010c8f16b205ec64fcc1e3849955437afc4e0",
+  "sellerAddress": "bchtest:qzrlqyxg794jqhkxflxpuwzfj42r0t7yuq5qslkpap",
+  "note": "Chipnet ReceiptMint deployed 2026-11-07 ~10:05 PM ET. Genesis tx 1578e2cf\u2026; category is the prep txid (vout-0 rule). Testnet coins only; no mainnet funds. Relay: hexbox-chipnet-relay (private, token in .secrets/).",
+  "category": "3a5041b004b625c6f6db3f4cf52eb93091df9e77b6bfc90b25843ee132e33d27",
+  "covenantTokenAddress": "bchtest:rwprt8tr975pn258pdv8s0dgvjtyfe70h5axerxm9g889jwf444vu2xk36qpp",
+  "genesisTxid": "1578e2cf46f197d077ce3f0cf3fcca84dc7adb0b660ed72c7dd447ec576d2253"
+}

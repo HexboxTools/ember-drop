@@ -1,2 +1,18 @@
-{ "name": "ember-drop", "version": "0.1.0", "type": "module", "license": "MIT",
-  "scripts": { "test": "node --test test/" } }
+{
+  "name": "ember-drop",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:live": "node --test test/liveMint.integration.js"
+  },
+  "dependencies": {
+    "@wizardconnect/core": "^0.2.5",
+    "@wizardconnect/dapp": "^0.2.2"
+  },
+  "devDependencies": {
+    "cashc": "^0.14.0",
+    "cashscript": "^0.14.0"
+  }
+}

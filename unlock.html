@@ -1,21 +1,47 @@
 <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ember Drop: unlock a file</title><link rel="stylesheet" href="style.css">
-<nav><a href="index.html">Seal</a><a href="unlock.html"><b>Unlock</b></a></nav>
+<nav><a href="index.html">Seal</a><a href="unlock.html"><b>Unlock</b></a><a href="pay.html">Pay</a></nav>
 <h1>Unlock</h1>
-<p>Pick a sealed <code>.ember</code> file and paste the receipt commitment. Decryption happens locally.</p>
+<p>Pick a sealed <code>.ember</code> file. Paste the receipt commitment, or enter the cashaddr that holds the receipt NFT and look it up on-chain. Decryption happens locally.</p>
 <p><input type="file" id="f"></p>
 <p><input type="text" id="c" placeholder="receipt commitment (50 hex characters)" autocomplete="off" spellcheck="false"></p>
-<p><button id="go">Unlock</button></p>
+<p><input type="text" id="addr" placeholder="cashaddr that holds the receipt NFT (optional)" autocomplete="off" spellcheck="false"></p>
+<p><button id="find">Find receipt in wallet</button> <button id="go">Unlock</button></p>
 <p id="msg" role="status"></p>
-<p class="note">Later this field fills itself from the NFT receipt in your wallet.</p>
+<p class="note">Find receipt asks chipnet (or the network in <code>config.json</code>) for NFT UTXOs at that address and picks the one whose commitment was minted for this file.</p>
 <script type="module">
 import { openWithCommitment } from './src/seal.js';
 import { unpackBundle } from './src/bundle.js';
+import { findReceiptCommitment } from './src/unlockFromNft.js';
 const $ = (id) => document.getElementById(id);
-$('go').onclick = async () => {
-  const file = $('f').files[0]; if (!file) { $('msg').textContent = 'Choose a .ember file first.'; return; }
+
+async function loadBundle() {
+  const file = $('f').files[0];
+  if (!file) throw new Error('Choose a .ember file first.');
+  return unpackBundle(new Uint8Array(await file.arrayBuffer()));
+}
+
+$('find').onclick = async () => {
   try {
-    const { manifest, ciphertext } = unpackBundle(new Uint8Array(await file.arrayBuffer()));
+    const { manifest } = await loadBundle();
+    const addr = $('addr').value.trim();
+    if (!addr) { $('msg').textContent = 'Enter the cashaddr that received the receipt NFT.'; return; }
+    const cfg = await (await fetch('config.json')).json();
+    const { ElectrumNetworkProvider } = await import('https://esm.sh/cashscript@0.14.0');
+    $('msg').textContent = 'Looking up UTXOs…';
+    const provider = new ElectrumNetworkProvider(cfg.network || 'chipnet');
+    const utxos = await provider.getUtxos(addr);
+    const hit = findReceiptCommitment(utxos, { manifestSha256: manifest.sha256, category: cfg.category });
+    if (!hit) { $('msg').textContent = 'No matching Ember Drop receipt NFT at that address.'; return; }
+    $('c').value = hit.commitment;
+    const where = hit.txid != null ? ` (${String(hit.txid).slice(0, 8)}…:${hit.vout})` : '';
+    $('msg').textContent = 'Found a receipt NFT' + where + '. Click Unlock.';
+  } catch (e) { $('msg').textContent = 'Could not find receipt: ' + e.message; }
+};
+
+$('go').onclick = async () => {
+  try {
+    const { manifest, ciphertext } = await loadBundle();
     const plain = await openWithCommitment(manifest, ciphertext, $('c').value);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([plain])); a.download = manifest.meta?.name || 'unlocked';

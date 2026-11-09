@@ -17,9 +17,11 @@ The seller can be offline the whole time.
 
 ## Run it
 
-Static site: `npx serve .` then open http://localhost:3000. Seal a file on the first page, then open the Unlock page and paste the receipt commitment to get it back.
+Static site: `npx serve .` then open http://localhost:3000. Seal a file on the first page, then open the Unlock page. Paste the receipt commitment, or enter the cashaddr that holds the receipt NFT and click Find receipt in wallet.
 
-Tests: `npm test` (Node 20+).
+Tests: `npm test` (Node 20+; script uses `node --test test/*.test.js` because Node 24 rejects `node --test test/`).
+
+Live chipnet mint check (uses gitignored `.secrets/` and the funded chipnet covenant; builds and evaluates a pay→mint tx; never broadcasts): `npm run test:live`.
 
 ## Seal format
 
@@ -30,13 +32,14 @@ Tests: `npm test` (Node 20+).
 
 ## Plan
 
+- [x] CashScript `contracts/ReceiptMint.cash` (+ artifact) for pay→mint NFT commitment
 - [x] Client-side AES-GCM encrypt/decrypt (split key, commitment encoding)
 - [x] Single-file `.ember` bundle, seal and unlock pages (manual commitment paste)
 - [x] Check that a receipt matches the file it unlocks
-- [ ] WizardConnect wallet connection
-- [ ] CashScript contract: pay → mint receipt NFT
-- [ ] Unlock from NFT commitment
-- [ ] Live demo on GitHub Pages
+- [~] WizardConnect wallet connection (pay.html Buy/mint flow coded; not yet tested against a real wallet)
+- [x] CashScript contract: pay → mint receipt NFT (ReceiptMint + live chipnet evaluation)
+- [x] Unlock from NFT commitment (scan wallet UTXOs for a matching receipt; paste still works)
+- [x] Live demo on GitHub Pages (seal/unlock only; https://hexboxtools.github.io/ember-drop/)
 - Stretch: ParyonUSD pricing, creator royalty on resale, BCMR metadata
 
 ## Threat model / limits

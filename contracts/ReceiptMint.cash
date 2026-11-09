@@ -1,0 +1,46 @@
+pragma cashscript ^0.14.0;
+
+/**
+ * Ember Drop receipt mint (BLAZE demo, local prep).
+ * Holds a minting NFT. Buyer pays `priceSats`; covenant mints one immutable NFT whose
+ * commitment is the buyer-supplied Ember Drop key share (25 bytes: 01||share16||tag8).
+ * Seller payout goes to pkhSeller (P2PKH).
+ */
+contract ReceiptMint(
+    int priceSats,
+    bytes20 pkhSeller
+) {
+    function mint(bytes emberCommitment) {
+        // Ember Drop v1 commitment: 1 + 16 + 8 = 25 bytes, version byte 0x01
+        require(emberCommitment.length == 25);
+        require(emberCommitment.split(1)[0] == 0x01);
+
+        require(this.activeInputIndex == 0);
+        require(tx.outputs.length == 3 || tx.outputs.length == 4);
+
+        bytes commitment = tx.inputs[0].nftCommitment;
+        int next = int(commitment) + 1;
+
+        // Out0: preserve minting covenant + minting NFT (value unchanged; payment goes to seller in Out2)
+        require(tx.outputs[0].lockingBytecode == tx.inputs[0].lockingBytecode);
+        require(tx.outputs[0].tokenCategory == tx.inputs[0].tokenCategory);
+        require(tx.outputs[0].nftCommitment == bytes(next));
+        require(tx.outputs[0].value == tx.inputs[0].value);
+
+        // Out1: immutable receipt NFT (buyer sets locking bytecode / address)
+        bytes tokenId = tx.inputs[0].tokenCategory.split(32)[0];
+        require(tx.outputs[1].value == 1000);
+        require(tx.outputs[1].tokenCategory == tokenId);
+        require(tx.outputs[1].nftCommitment == emberCommitment);
+
+        // Out2: seller payout (P2PKH to pkhSeller)
+        require(tx.outputs[2].tokenCategory == 0x);
+        require(tx.outputs[2].value == priceSats);
+        require(tx.outputs[2].lockingBytecode == new LockingBytecodeP2PKH(pkhSeller));
+
+        // Optional Out3: buyer change (pure BCH)
+        if (tx.outputs.length == 4) {
+            require(tx.outputs[3].tokenCategory == 0x);
+        }
+    }
+}

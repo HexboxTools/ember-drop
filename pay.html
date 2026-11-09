@@ -1,0 +1,96 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ember Drop: pay with WizardConnect</title><link rel="stylesheet" href="style.css">
+<nav><a href="index.html">Seal</a><a href="unlock.html">Unlock</a><a href="pay.html"><b>Pay</b></a></nav>
+<h1>Pay with WizardConnect</h1>
+<p>Pair a BCH wallet over WizardConnect, paste the receipt commitment from the seller's drop, and buy: the ReceiptMint covenant mints you an NFT carrying the unlock share (chipnet demo).</p>
+<p><button id="pair">Show pairing URI</button> <button id="disc" disabled>Disconnect</button></p>
+<pre id="uri" style="word-break:break-all;white-space:pre-wrap"></pre>
+<p id="status">Not connected.</p>
+<pre id="session"></pre>
+<p><label>Receipt commitment (50 hex) <input id="commit" size="56"></label> <button id="buy" disabled>Buy &amp; mint receipt</button></p>
+<pre id="buyout" style="word-break:break-all;white-space:pre-wrap"></pre>
+<script type="importmap">
+{
+  "imports": {
+    "@wizardconnect/core": "https://esm.sh/@wizardconnect/core@0.2.5",
+    "@wizardconnect/dapp": "https://esm.sh/@wizardconnect/dapp@0.2.2",
+    "cashscript": "https://esm.sh/cashscript@0.14.0",
+    "@bitauth/libauth": "https://esm.sh/@bitauth/libauth@3"
+  }
+}
+</script>
+<script type="module">
+import { initiateDappRelay } from '@wizardconnect/core';
+import { DappConnectionManager } from '@wizardconnect/dapp';
+import { ElectrumNetworkProvider, placeholderP2PKHUnlocker } from 'cashscript';
+import { receiptMintContract, buildMintTx, wcMintSignRequest, addressFromXpub } from './src/mintTx.js';
+
+const $ = (id) => document.getElementById(id);
+let relay = null;
+const dappMgr = new DappConnectionManager('Ember Drop', undefined, { session: false });
+
+dappMgr.on('walletready', (msg) => {
+  $('status').textContent = 'Wallet ready: ' + (msg.wallet_name || '(unnamed)');
+  $('session').textContent = JSON.stringify({
+    protocol: dappMgr.protocol,
+    paths: dappMgr.getSessionPaths(),
+  }, null, 2);
+  $('disc').disabled = false;
+  $('buy').disabled = false;
+});
+
+dappMgr.on('disconnect', (reason, message) => {
+  $('status').textContent = 'Disconnected: ' + reason + (message ? ' — ' + message : '');
+  $('disc').disabled = true;
+  $('buy').disabled = true;
+  if (relay) { try { relay.cleanup(); } catch (_) {} relay = null; }
+});
+
+$('pair').onclick = () => {
+  if (relay) { try { relay.cleanup(); } catch (_) {} }
+  relay = initiateDappRelay((payload) => {
+    dappMgr.updateConnection(payload.client, payload.status);
+    $('status').textContent = 'Relay: ' + (payload.status?.status || JSON.stringify(payload.status));
+  });
+  dappMgr.attachRelay(relay);
+  $('uri').textContent = relay.uri;
+  $('status').textContent = 'Scan this URI in a WizardConnect wallet.';
+  $('session').textContent = '';
+};
+
+$('disc').onclick = async () => {
+  try { await dappMgr.sendDisconnect('user clicked disconnect'); } catch (_) {}
+  if (relay) { try { relay.cleanup(); } catch (_) {} relay = null; }
+  $('uri').textContent = '';
+  $('status').textContent = 'Not connected.';
+  $('session').textContent = '';
+  $('disc').disabled = true;
+  $('buy').disabled = true;
+};
+
+$('buy').onclick = async () => {
+  const out = $('buyout');
+  try {
+    const cfg = await (await fetch('config.json')).json();
+    if (!cfg.sellerAddress) throw new Error('demo mint covenant not deployed yet (config.json)');
+    const artifact = await (await fetch('contracts/ReceiptMint.json')).json();
+    const provider = new ElectrumNetworkProvider(cfg.network);
+    const contract = receiptMintContract(artifact, cfg, provider);
+    const recv = dappMgr.getSessionPaths().find((p) => p.name === 'receive');
+    if (!recv?.xpub) throw new Error('wallet did not share a receive xpub');
+    const buyer = await addressFromXpub(recv.xpub, 0, cfg.prefix);
+    const [mintUtxo] = (await contract.getUtxos()).filter((u) => u.token?.nft?.capability === 'minting');
+    if (!mintUtxo) throw new Error('no minting NFT at the covenant address');
+    const buyerUtxos = (await provider.getUtxos(buyer.addr)).filter((u) => !u.token);
+    const tb = buildMintTx({ contract, provider, mintUtxo, buyerUtxos,
+      buyerUnlocker: placeholderP2PKHUnlocker(buyer.addr), buyerAddress: buyer.tokenAddr,
+      sellerAddress: cfg.sellerAddress, priceSats: cfg.priceSats, commitmentHex: $('commit').value.trim().toLowerCase() });
+    const req = wcMintSignRequest(tb, buyerUtxos.map(() => ['receive', 0]));
+    out.textContent = 'Asking wallet to sign...';
+    const res = await dappMgr.signTransaction(req);
+    if (res.error) throw new Error(res.error);
+    const txid = await provider.sendRawTransaction(res.signedTransaction);
+    out.textContent = 'Minted receipt. txid ' + txid + '\nOpen unlock.html with your .ember file and Find receipt in wallet, or paste the commitment from the NFT.';
+  } catch (e) { out.textContent = 'Error: ' + e.message; }
+};
+</script>
